@@ -26,6 +26,7 @@ const UploadFile = () => {
             'text/html': ['.html'],
             'image/jpeg': ['.jpg', '.jpeg'],
             'image/png': ['.png'],
+            'image/gif': ['.gif'],
             'application/zip': ['.zip'],
             'application/x-zip-compressed': ['.zip']
         }
@@ -55,6 +56,7 @@ const UploadFile = () => {
         const ext = name.split('.').pop()?.toLowerCase();
         if (ext === 'html') return <FileText size={32} style={{ color: '#FF8C00' }} />;
         if (ext === 'zip') return <Archive size={32} style={{ color: '#818cf8' }} />;
+        if (ext === 'gif') return <ImageIcon size={32} style={{ color: '#f472b6' }} />;
         return <ImageIcon size={32} style={{ color: '#10b981' }} />;
     };
 
@@ -103,19 +105,19 @@ const UploadFile = () => {
 
                 <div className="p-6">
                     <p className="text-sm mb-5" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                        Supported formats: <span style={{ color: '#FF8C00' }}>.html</span> · <span style={{ color: '#10b981' }}>.jpg / .png</span> · <span style={{ color: '#818cf8' }}>.zip</span>
+                        Supported formats: <span style={{ color: '#FF8C00' }}>.html</span> · <span style={{ color: '#10b981' }}>.jpg / .png / .gif</span> · <span style={{ color: '#818cf8' }}>.zip</span>
                     </p>
 
                     {error && (
                         <div className="mb-5 px-4 py-3 rounded-xl flex items-center gap-2 text-sm"
                             style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
-                            <AlertCircle size={16} className="flex-shrink-0" /> {error}
+                            <AlertCircle size={16} className="shrink-0" /> {error}
                         </div>
                     )}
                     {success && (
                         <div className="mb-5 px-4 py-3 rounded-xl flex items-center gap-2 text-sm"
                             style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', color: '#6ee7b7' }}>
-                            <CheckCircle2 size={16} className="flex-shrink-0" /> File uploaded successfully! Redirecting...
+                            <CheckCircle2 size={16} className="shrink-0" /> File uploaded successfully! Redirecting...
                         </div>
                     )}
 
@@ -151,7 +153,7 @@ const UploadFile = () => {
                                             {isDragActive ? '📂 Drop it here!' : 'Click to upload or drag & drop'}
                                         </p>
                                         <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                                            HTML · ZIP · JPG · PNG
+                                            HTML · ZIP · JPG · PNG · GIF
                                         </p>
                                     </div>
                                 </div>

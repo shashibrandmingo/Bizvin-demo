@@ -3,7 +3,7 @@ import api from '../utils/api';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle2, AlertCircle, Send, FileText, User, Mail, AtSign, MessageSquare, Image as ImageIcon, Link, AlignCenter, Calendar } from 'lucide-react';
 
-interface FileData { _id: string; fileName: string; fileUrl: string; }
+interface FileData { _id: string; fileName: string; fileUrl: string; fileType: string; }
 
 const inputBase: React.CSSProperties = {
     background: 'rgba(255,255,255,0.06)',
@@ -81,7 +81,7 @@ const ImageEmail = () => {
     useEffect(() => {
         api.get('/upload?limit=100').then(({ data }) => {
             const uploadedFiles = Array.isArray(data) ? data : data.files || [];
-            setImageFiles(uploadedFiles.filter((f: any) => f.fileType === 'IMAGE'));
+            setImageFiles(uploadedFiles.filter((f: any) => f.fileType === 'IMAGE' || f.fileType === 'GIF'));
         }).catch(console.error);
 
         api.get('/email-configs').then(({ data }) => {
@@ -101,7 +101,11 @@ const ImageEmail = () => {
         setLoading(true); setStatus({ type: '', message: '' });
         try {
             const endpoint = isScheduled ? '/emails/schedule' : '/emails/send';
-            const payload: any = { type: 'Image', ...formData, toEmails: emailsArray };
+            // Determine type based on fileUrl extension or just use 'Image' (backend now handles GIF type)
+            const selectedFile = imageFiles.find(f => f.fileUrl === formData.fileUrl);
+            const campaignType = selectedFile?.fileType === 'GIF' ? 'GIF' : 'Image';
+            
+            const payload: any = { type: campaignType, ...formData, toEmails: emailsArray };
             if (isScheduled) payload.scheduledAt = scheduledAt;
 
             await api.post(endpoint, payload);
@@ -120,8 +124,8 @@ const ImageEmail = () => {
                     <ImageIcon size={20} className="text-white" />
                 </div>
                 <div>
-                    <h1 className="text-2xl font-extrabold text-white">Image Based Email</h1>
-                    <p className="text-xs" style={{ color: 'rgba(255,200,120,0.6)' }}>Send an image as email campaign with optional link</p>
+                    <h1 className="text-2xl font-extrabold text-white">Image & GIF Email</h1>
+                    <p className="text-xs" style={{ color: 'rgba(255,200,120,0.6)' }}>Send an image or GIF as email campaign</p>
                 </div>
             </div>
 
@@ -189,8 +193,8 @@ const ImageEmail = () => {
                             </div>
                         </div>
 
-                        <SelectField label="Select Image File" icon={ImageIcon} name="fileUrl" required value={formData.fileUrl} onChange={handleChange}>
-                            <option value="" disabled style={{ background: '#1a1035' }}>— Choose Image (JPEG / PNG) —</option>
+                        <SelectField label="Select Image or GIF" icon={ImageIcon} name="fileUrl" required value={formData.fileUrl} onChange={handleChange}>
+                            <option value="" disabled style={{ background: '#1a1035' }}>— Choose File (JPEG / PNG / GIF) —</option>
                             {imageFiles.map(f => <option key={f._id} value={f.fileUrl} style={{ background: '#1a1035' }}>{f.fileName}</option>)}
                         </SelectField>
                         {imageFiles.length === 0 && <p className="text-xs" style={{ color: '#FB8500' }}>No image files found. <a href="/upload" className="underline">Upload one first.</a></p>}

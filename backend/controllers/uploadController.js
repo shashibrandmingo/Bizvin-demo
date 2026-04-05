@@ -10,21 +10,54 @@ export const uploadFile = async (req, res) => {
             return res.status(400).json({ message: 'No file uploaded' });
         }
 
+        // Determine folder and resource_type based on mimetype
+        let folder = 'email_marketing/others';
+        let resource_type = 'auto';
+
+        if (req.file.mimetype === 'text/html') {
+            folder = 'email_marketing/html';
+            resource_type = 'raw';
+        } else if (req.file.mimetype.startsWith('image/')) {
+            folder = 'email_marketing/images';
+            resource_type = 'image';
+        } else if (req.file.mimetype === 'application/zip' || req.file.mimetype === 'application/x-zip-compressed') {
+            folder = 'email_marketing/zips';
+            resource_type = 'raw';
+        }
+
+        // Upload to Cloudinary using upload_stream (buffer to cloud)
+        const uploadResponse = await new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+                {
+                    folder: folder,
+                    resource_type: resource_type,
+                    public_id: `${Date.now()}-${req.file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '')}`,
+                },
+                (error, result) => {
+                    if (error) reject(error);
+                    else resolve(result);
+                }
+            );
+            stream.end(req.file.buffer);
+        });
+
         let fileType = 'OTHER';
         if (req.file.mimetype === 'text/html') fileType = 'HTML';
-        if (req.file.mimetype.startsWith('image/')) fileType = 'IMAGE'; // JPEG or PNG
+        if (req.file.mimetype === 'image/gif') fileType = 'GIF';
+        if (req.file.mimetype.startsWith('image/') && req.file.mimetype !== 'image/gif') fileType = 'IMAGE';
         if (req.file.mimetype === 'application/zip' || req.file.mimetype === 'application/x-zip-compressed') fileType = 'ZIP';
 
         const newResource = await Resource.create({
             uploaderId: req.user._id,
             fileType: fileType,
             fileName: req.file.originalname,
-            fileUrl: req.file.path, // Cloudinary provides the URL in 'path'
-            cloudinaryId: req.file.filename, // Cloudinary public_id
+            fileUrl: uploadResponse.secure_url,
+            cloudinaryId: uploadResponse.public_id,
         });
 
         res.status(201).json(newResource);
     } catch (error) {
+        console.error('Upload Error:', error);
         res.status(500).json({ message: error.message });
     }
 };

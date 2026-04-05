@@ -9,7 +9,7 @@ const resourceSchema = new mongoose.Schema(
         },
         fileType: {
             type: String,
-            enum: ['HTML', 'IMAGE', 'ZIP'],
+            enum: ['HTML', 'IMAGE', 'ZIP', 'GIF'],
             required: true,
         },
         fileUrl: { type: String, required: true },

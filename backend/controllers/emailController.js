@@ -28,7 +28,7 @@ export const processCampaignEmails = async (campaignData) => {
               {{OPEN_TRACKING_PIXEL}}
             </div>
         `;
-    } else if (type === 'Image') {
+    } else if (type === 'Image' || type === 'GIF') {
         const imageLink = linkOnImage || '#';
         baseHtml = `
             <div style="text-align: center;">
@@ -41,36 +41,103 @@ export const processCampaignEmails = async (campaignData) => {
             </div>
         `;
     } else if (type === 'ZIP') {
-        baseHtml = `
-            <div>
-              <h2>Important Attachments Included</h2>
-              <p>Please find the attached files for this campaign.</p>
-              <hr/>
-              <small>${disclaimer || ''}</small>
-              {{OPEN_TRACKING_PIXEL}}
-            </div>
-        `;
         try {
             // Download the ZIP file as a buffer
             const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
-            
-            // Extract the ZIP contents in memory
             const zip = new AdmZip(Buffer.from(response.data));
             const zipEntries = zip.getEntries();
-            
-            // Map each file inside the ZIP to an attachment
-            zipEntries.forEach((zipEntry) => {
-                // Ignore directories, macos meta files, and focus only on actual files
-                if (!zipEntry.isDirectory && !zipEntry.entryName.startsWith('__MACOSX/')) {
-                    emailAttachments.push({
-                        filename: zipEntry.name, // Just use the file name, not the full path in the zip
-                        content: zipEntry.getData() // Buffer of the extracted file
-                    });
+
+            let htmlContent = '';
+            let imagesInZip = [];
+            let otherFiles = [];
+
+            // 1. Sort files into categories
+            zipEntries.forEach((entry) => {
+                if (entry.isDirectory || entry.entryName.startsWith('__MACOSX/')) return;
+
+                const ext = entry.name.split('.').pop()?.toLowerCase();
+                if (ext === 'html' && !htmlContent) {
+                    htmlContent = entry.getData().toString('utf8');
+                } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+                    imagesInZip.push(entry);
+                } else {
+                    otherFiles.push(entry);
                 }
             });
+
+            // 2. Generate Base HTML
+            if (htmlContent) {
+                // Template Mode: Use the HTML from ZIP
+                baseHtml = htmlContent;
+                // Basic replacement for local images if they exist in the ZIP
+                imagesInZip.forEach(img => {
+                    const cid = `img_${img.name.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                    // Replace standard src="imgname.ext" or src="./imgname.ext" with cid:imgname.ext
+                    const regex = new RegExp(`src=["'](\\./)?${img.name}["']`, 'gi');
+                    if (baseHtml.match(regex)) {
+                        baseHtml = baseHtml.replace(regex, `src="cid:${cid}"`);
+                        emailAttachments.push({
+                            filename: img.name,
+                            content: img.getData(),
+                            cid: cid
+                        });
+                    } else {
+                        // If not referenced in HTML, just attach it normally
+                        emailAttachments.push({
+                            filename: img.name,
+                            content: img.getData()
+                        });
+                    }
+                });
+                
+                // Add tracking pixel and disclaimer at the bottom if not present
+                if (!baseHtml.includes('{{OPEN_TRACKING_PIXEL}}')) baseHtml += '\n{{OPEN_TRACKING_PIXEL}}';
+                if (disclaimer) baseHtml += `<br/><hr/><small>${disclaimer}</small>`;
+                
+            } else if (imagesInZip.length > 0) {
+                // Gallery Mode: Show all images in a sequence
+                baseHtml = `<div style="text-align: center; font-family: sans-serif;">`;
+                imagesInZip.forEach((img, idx) => {
+                    const cid = `gallery_${idx}`;
+                    baseHtml += `
+                        <div style="margin-bottom: 20px;">
+                            <img src="cid:${cid}" alt="${img.name}" style="max-width: 100%; height: auto; border-radius: 8px;" />
+                        </div>
+                    `;
+                    emailAttachments.push({
+                        filename: img.name,
+                        content: img.getData(),
+                        cid: cid
+                    });
+                });
+                baseHtml += `<br/><small>${disclaimer || ''}</small>{{OPEN_TRACKING_PIXEL}}</div>`;
+            } else {
+                // Fallback Mode: Just list files
+                baseHtml = `
+                    <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
+                        <h2 style="color: #FF6B00;">Package Contents</h2>
+                        <p>We've attached the follow files from the package:</p>
+                        <ul style="color: #666;">
+                            ${zipEntries.filter(e => !e.isDirectory).map(e => `<li>${e.name}</li>`).join('')}
+                        </ul>
+                        <hr/>
+                        <small>${disclaimer || ''}</small>
+                        {{OPEN_TRACKING_PIXEL}}
+                    </div>
+                `;
+            }
+
+            // 3. Add all other files as standard attachments
+            otherFiles.forEach(file => {
+                emailAttachments.push({
+                    filename: file.name,
+                    content: file.getData()
+                });
+            });
+
         } catch (error) {
-            console.error('Error processing ZIP file for attachments:', error);
-            throw new Error('Failed to download or extract ZIP file attachments.');
+            console.error('Error processing ZIP file:', error);
+            throw new Error('Failed to process ZIP file content.');
         }
     }
 

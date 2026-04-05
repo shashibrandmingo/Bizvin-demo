@@ -3,7 +3,7 @@ import api from '../utils/api';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle2, AlertCircle, Send, FileText, User, Mail, AtSign, MessageSquare, Archive, Calendar } from 'lucide-react';
 
-interface FileData { _id: string; fileName: string; fileUrl: string; }
+interface FileData { _id: string; fileName: string; fileUrl: string; fileType: string; }
 
 const inputBase: React.CSSProperties = {
     background: 'rgba(255,255,255,0.06)',
@@ -119,8 +119,8 @@ const ZipEmail = () => {
                     <Archive size={20} className="text-white" />
                 </div>
                 <div>
-                    <h1 className="text-2xl font-extrabold text-white">ZIP Based Email</h1>
-                    <p className="text-xs" style={{ color: 'rgba(255,200,120,0.6)' }}>Send a ZIP package as email campaign</p>
+                    <h1 className="text-2xl font-extrabold text-white">ZIP Template Email</h1>
+                    <p className="text-xs" style={{ color: 'rgba(255,200,120,0.6)' }}>Upload a ZIP with HTML/Images to send a complete design</p>
                 </div>
             </div>
 
@@ -183,9 +183,12 @@ const ZipEmail = () => {
                         </div>
 
                         <SelectField label="Select ZIP File" icon={Archive} name="fileUrl" required value={formData.fileUrl} onChange={handleChange}>
-                            <option value="" disabled style={{ background: '#1a1035' }}>— Choose ZIP File —</option>
+                            <option value="" disabled style={{ background: '#1a1035' }}>— Choose ZIP (Template or Images) —</option>
                             {zipFiles.map(f => <option key={f._id} value={f.fileUrl} style={{ background: '#1a1035' }}>{f.fileName}</option>)}
                         </SelectField>
+                        <p className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                            * System will automatically unzip the file. If an HTML file is found, it will be used as the body. Otherwise, images will be shown as a gallery.
+                        </p>
                         {zipFiles.length === 0 && <p className="text-xs" style={{ color: '#FB8500' }}>No ZIP files found. <a href="/upload" className="underline">Upload one first.</a></p>}
 
                         <div className="md:col-span-2 pt-4 pb-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
